@@ -2,7 +2,7 @@ name: scheduler
 
 # Keeps the 15-minute rhythm without an outside service.
 # GitHub's own cron for this repo was not firing (or fires late), so this job stays alive for
-# about 5.5 h, dispatches s1-collect at minute 06, 21, 36 and 51 (TMD posts each scan ~5-8 min
+# about 5.5 h, dispatches s1-collect (4 rounds, 3 min apart) at minute 06, 21, 36 and 51 (TMD posts each scan ~5-8 min
 # after :00/:15/:30/:45), then starts a fresh copy of itself. A workflow_dispatch made with the
 # GITHUB_TOKEN is allowed to start a new run (GitHub exception for workflow_dispatch).
 # Start it once by hand: Actions > scheduler > Run workflow. The cron below restarts it if it ever stops.
@@ -38,7 +38,7 @@ jobs:
             next=$(( ((now - OFFSET) / 900 + 1) * 900 + OFFSET ))
             [ "$next" -ge "$end" ] && break
             sleep $(( next - now ))
-            if gh workflow run collect.yml -R "$REPO" --ref main -f repeat=2; then
+            if gh workflow run collect.yml -R "$REPO" --ref main -f repeat=4; then
               echo "$(date -u +%H:%M:%SZ) dispatched s1-collect"
             else
               echo "::warning::dispatch failed at $(date -u +%H:%M:%SZ)"
