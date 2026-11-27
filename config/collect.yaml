@@ -7,3 +7,5 @@ min_bytes: 50000       # smaller files are treated as broken
 repeat: 4              # rounds per job (GitHub cron can start late, so each job checks several times)
 interval_s: 180        # seconds between rounds
 data_root: data        # local working folder; raw images are copied to the archive remote by the workflow
+archive_label: "Google Drive · ChaoPhraya_Radar_Archive"   # shown on the admin page
+archive_url: "https://drive.google.com/drive/folders/1FRvw5tETSym77HOyctNxTyEhN3cVYG98"

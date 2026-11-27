@@ -1,12 +1,9 @@
-# Expert / admin site (planned)
+# Expert / admin site
 
-Not linked from the public site. Pages from the mock-up: live (all layers, manual model choice, status of the nine
-radars) · best product and other models · verification and selection ranking · detailed sub-basin and
-district / sub-district tables · radars and data quality · archive and downloads (raw images, NetCDF, GIF).
+Main admin page: the Streamlit app in `admin/streamlit_app.py` (same look as the TanFon admin hub).
+It reads the status bundle that the s1-collect workflow publishes to GitHub Pages
+(`data/status/latest.json`, `history_48h.csv`, `thumbs/<CODE>.jpg`) and the GitHub API.
+Secret `GITHUB_TOKEN` (fine-grained, this repo only, Actions: Read and write) enables the on/off switch.
 
-Built: `index.html` (open it from disk or from Pages). Shows the system switch with an on/off button, the last
-s1-collect runs and the switch history. The button calls the `control` workflow through the GitHub API with a
-fine-grained token (this repo only, Actions: Read and write) kept in the browser's localStorage; without a token it
-opens the Actions page so the workflow can be run by hand. `?repo=owner/name` points it at another repo.
-
-Next page to build: collector health from `data/inventory` (images per radar per day, 96 expected).
+`index.html` here is a light fallback (switch + recent runs) served at
+https://jamorn12.github.io/chaophraya-rain/admin/

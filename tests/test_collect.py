@@ -124,3 +124,24 @@ def test_trial_report(tmp_path):
     row = rep.loc["PHS"]
     assert row["requests"] == 3 and row["new"] == 2 and row["duplicate"] == 1 and row["error"] == 0
     assert row["sizes"] == "400x300"
+
+
+def test_status_bundle(tmp_path):
+    import json
+    from cpmosaic.s1_collect import status
+    rs = radars(["PHS", "CRI"])
+    url = {r.code: r.url for r in rs}
+    plan = {url["PHS"]: [FakeResp(jpeg(1))], url["CRI"]: [FakeResp(b"<html>x</html>" * 100)]}
+    make(tmp_path, plan).run(rs)
+    h = status.update_history(tmp_path)
+    assert len(h) == 2 and (tmp_path / "state" / "history.csv").exists()
+    assert status.refresh_thumbs(tmp_path, h) == ["PHS"]
+    d = status.build_site(tmp_path, tmp_path / "site", h)
+    s = json.loads((d / "latest.json").read_text(encoding="utf-8"))
+    by = {r["code"]: r for r in s["radars"]}
+    assert len(by) == 9 and by["PHS"]["fresh"] and by["PHS"]["new_24h"] == 1
+    assert by["CRI"]["err_24h"] == 1 and not by["CRI"]["fresh"]
+    assert (d / "thumbs" / "PHS.jpg").exists() and (d / "history_48h.csv").exists()
+    # a second job with no new image keeps history and the old thumb
+    h2 = status.update_history(tmp_path)
+    assert len(h2) == 2

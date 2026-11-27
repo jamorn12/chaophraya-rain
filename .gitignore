@@ -12,3 +12,4 @@ __pycache__/
 *.conf
 GITHUB_TOKEN*
 .env
+/site/
