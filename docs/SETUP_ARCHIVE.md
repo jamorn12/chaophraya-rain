@@ -3,7 +3,16 @@
 ปลายทาง: Google Drive ของบัญชีวิจัย (5 TB) โฟลเดอร์ `ChaoPhraya_Radar_Archive`
 ภาพราว 1.2 GB/วัน ≈ 440 GB/ปี และราว 860 ไฟล์/วัน
 
-## 1. สร้าง client ID ของตัวเอง (กัน token หมดอายุ)
+## ทางลัด (ใช้อยู่): ไฟล์ `setup_drive_archive.bat`
+
+ดับเบิลคลิกแล้วทำครบ: ติดตั้ง rclone (winget) → สร้าง remote `gdrive` scope `drive.file` ด้วย client ID มาตรฐานของ rclone
+(เปิดเบราว์เซอร์ให้ล็อกอิน Google แล้วกด Allow) → สร้างโฟลเดอร์ → คัดลอกค่า base64 ของ rclone.conf ลง clipboard
+→ เปิดหน้า New secret ของ GitHub ให้วางเป็น `RCLONE_CONF` · ไฟล์อยู่ที่ `D:\Wihok\appNowcast\mosaic_chaophraya\`
+
+client ID มาตรฐานของ rclone ใช้โควตาร่วมกับผู้ใช้ rclone คนอื่น ปริมาณของเรา (ราว 40 ไฟล์ต่อ 15 นาที) น้อย จึงพอ
+ถ้าเริ่มเจอ error 403 rate limit ใน step "Copy to archive" บ่อย ค่อยเปลี่ยนเป็น client ID ของตัวเองตามข้อ 1–2 ข้างล่าง
+
+## 1. (ทางเลือก) สร้าง client ID ของตัวเอง
 
 ถ้าใช้ client ID ของตัวเองแต่ปล่อยแอปไว้ในสถานะ Testing token จะหมดอายุทุก 7 วัน และ workflow จะหยุดส่งภาพเงียบๆ
 
