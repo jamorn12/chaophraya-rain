@@ -85,7 +85,8 @@ div[data-testid="stButtonGroup"] button[aria-checked="true"],div[data-testid="st
 .kpi i{{font-style:normal;font-size:12px;margin-left:4px}}
 @media (max-width:900px){{.kpi{{grid-template-columns:repeat(2,minmax(0,1fr))}}}}
 .card-h{{display:flex;align-items:center;justify-content:space-between;font-size:13.5px;margin:0 0 5px;gap:8px;height:22px;white-space:nowrap}}
-.card-h > span:first-child{{overflow:hidden;text-overflow:ellipsis;min-width:0}}
+.card-h .l{{display:flex;align-items:center;min-width:0;gap:5px}}
+.card-h .nm{{overflow:hidden;text-overflow:ellipsis;min-width:0;color:#444}}
 .card-h > span:last-child{{flex:none;font-size:12.5px}}
 .card-h .code{{font-weight:700;color:{NAVY};font-family:'IBM Plex Mono',monospace}}
 .card-h .dot{{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;vertical-align:0}}
@@ -221,8 +222,16 @@ def alerts(S, last_run_age, sched_running):
                     + ("" if sched_running else " · scheduler ไม่ได้รันอยู่ ให้สั่ง Actions › scheduler › Run workflow")))
     for r in S["radars"]:
         if S["control"]["enabled"] and not r["fresh"]:
-            out.append(("bad", f"{r['code']} {r['thai']}",
-                        f"ไม่มีภาพใหม่ {age_str(r['age_min'])}" if r["age_min"] is not None else "ยังไม่เคยได้ภาพ"))
+            recent_try = age_min(ts(r["last_try_utc"]))
+            if r["age_min"] is not None:
+                msg = f"ไม่มีภาพใหม่ {age_str(r['age_min'])}"
+            elif recent_try is not None and recent_try <= 30 and r["dup_24h"]:
+                msg = f"ดึงภาพได้ แต่ภาพจากกรมอุตุฯ ไม่เปลี่ยนตั้งแต่เริ่มบันทึก (ซ้ำ {r['dup_24h']} รอบ) · สถานีอาจหยุดอัปเดต"
+            else:
+                msg = "ยังไม่เคยได้ภาพ"
+            if recent_try is not None and recent_try <= 30 and r["age_min"] is not None and r["dup_24h"]:
+                msg += " · ดึงได้แต่ภาพซ้ำ (กรมอุตุฯ ไม่อัปเดต)"
+            out.append(("bad", f"{r['code']} {r['thai']}", msg))
         if r["err_24h"] >= 5:
             out.append(("warn", f"{r['code']} ดึงไม่สำเร็จ {r['err_24h']} ครั้ง/24 ชม.", r["last_error"][:120]))
         sz = S.get("sizes", {}).get(r["code"], [])
@@ -481,8 +490,9 @@ def placeholder(stage, text):
 def radar_card(r, big=False):
     t = ts(r["last_new_utc"])
     col = OK if r["fresh"] else (BAD if t else "#888")
-    st.markdown(f'<div class="card-h"><span><span class="dot" style="background:{col}"></span><span class="code">{r["code"]}</span> '
-                f'{r["thai"]}</span><span style="color:{col}">{th_str(t, False)} · {age_str(r["age_min"])}</span></div>',
+    st.markdown(f'<div class="card-h"><span class="l"><span class="dot" style="background:{col};flex:none"></span>'
+                f'<span class="code">{r["code"]}</span><span class="nm">{r["thai"]}</span></span>'
+                f'<span style="color:{col}">{th_str(t, False)} · {age_str(r["age_min"])}</span></div>',
                 unsafe_allow_html=True)
     b = thumb(r["code"], r["last_try_utc"] or "none") if r["last_try_utc"] else None
     if b:
