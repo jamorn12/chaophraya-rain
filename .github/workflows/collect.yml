@@ -45,7 +45,7 @@ jobs:
     timeout-minutes: 25
     environment:
       name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+      url: ${{ steps.deployment.outputs.page_url || steps.deployment2.outputs.page_url }}
     env:
       ARCHIVE_REMOTE: ${{ vars.ARCHIVE_REMOTE || 'gdrive:ChaoPhraya_Radar_Archive' }}
     steps:
@@ -120,4 +120,11 @@ jobs:
         with:
           path: site
       - id: deployment
+        uses: actions/deploy-pages@v4
+        continue-on-error: true           # the artifact lookup sometimes fails right after upload
+      - name: Wait before retrying the deploy
+        if: steps.deployment.outcome == 'failure'
+        run: sleep 30
+      - id: deployment2
+        if: steps.deployment.outcome == 'failure'
         uses: actions/deploy-pages@v4
