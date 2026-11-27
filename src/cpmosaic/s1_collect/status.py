@@ -55,24 +55,69 @@ def update_history(root: Path, keep_days: float = 7, now: datetime | None = None
     return h
 
 
-def refresh_thumbs(root: Path, hist: pd.DataFrame, size: int = 900) -> list[str]:
-    """Make state/thumbs/<CODE>.jpg from the newest image of each radar that is on disk now."""
+BOX = (960, 800)          # every thumbnail is letterboxed into the same 6:5 box (most TMD images are 1920x1600)
+FRAME_BOX = (640, 533)
+BG = (14, 17, 22)
+N_FRAMES = 8              # newest images kept per radar for the admin film strip (about 2 h)
+
+
+def letterbox(src: Path, box: tuple[int, int]) -> Image.Image:
+    im = Image.open(src).convert("RGB")
+    im.thumbnail(box, Image.LANCZOS)
+    out = Image.new("RGB", box, BG)
+    out.paste(im, ((box[0] - im.width) // 2, (box[1] - im.height) // 2))
+    return out
+
+
+def refresh_thumbs(root: Path, hist: pd.DataFrame) -> list[str]:
+    """state/thumbs/<CODE>.jpg from data/latest/<CODE>.jpg (the newest bytes of this job, new or duplicate);
+    state/frames/<CODE>/<CODE>_<fetch>Z.jpg from every new image of this job, keeping the newest N_FRAMES."""
     root = Path(root)
-    tdir = root / "state" / "thumbs"
+    tdir, fdir = root / "state" / "thumbs", root / "state" / "frames"
     tdir.mkdir(parents=True, exist_ok=True)
     done = []
-    new = hist[hist["status"] == "new"].dropna(subset=["path"])
-    for code, g in new.groupby("code"):
-        src = root / str(g.iloc[-1]["path"])
-        if not src.exists():
-            continue                      # older image from an earlier job: keep the thumb we have
-        im = Image.open(src).convert("RGB")
-        im.thumbnail((size, size), Image.LANCZOS)
-        im.save(tdir / f"{code}.jpg", "JPEG", quality=82, optimize=True)
-        meta = {"fetch_utc": str(g.iloc[-1]["fetch_utc"]), "path": str(g.iloc[-1]["path"])}
+    for src in sorted((root / "latest").glob("*.jpg")):
+        code = src.stem
+        letterbox(src, BOX).save(tdir / f"{code}.jpg", "JPEG", quality=84, optimize=True)
+        g = hist[hist["code"] == code]
+        meta = {"fetch_utc": None if g.empty else g["fetch_utc"].max().strftime("%Y-%m-%dT%H:%M:%SZ")}
         (tdir / f"{code}.json").write_text(json.dumps(meta))
         done.append(code)
+    new = hist[hist["status"] == "new"].dropna(subset=["path"])
+    for code, g in new.groupby("code"):
+        out = fdir / code
+        out.mkdir(parents=True, exist_ok=True)
+        for _, row in g.iterrows():
+            src = root / str(row["path"])
+            dst = out / f"{code}_{row['fetch_utc']:%Y%m%dT%H%M%S}Z.jpg"
+            if src.exists() and not dst.exists():
+                letterbox(src, FRAME_BOX).save(dst, "JPEG", quality=80, optimize=True)
+    for out in fdir.glob("*"):
+        for old in sorted(out.glob("*.jpg"))[:-N_FRAMES]:
+            old.unlink()
     return done
+
+
+def daily_counts(hist: pd.DataFrame, days: int = 7, now: datetime | None = None) -> list[dict]:
+    """New images per radar per Thai day (UTC+7), last `days` days. 96 = complete."""
+    now = pd.Timestamp(now or datetime.now(timezone.utc))
+    h = hist[(hist["status"] == "new") & (hist["fetch_utc"] >= now - pd.Timedelta(days=days))]
+    if h.empty:
+        return []
+    day = h["fetch_utc"].dt.tz_convert("Asia/Bangkok").dt.strftime("%Y-%m-%d")
+    t = h.assign(day=day).groupby(["day", "code"]).size().rename("n").reset_index()
+    return t.to_dict("records")
+
+
+def size_changes(hist: pd.DataFrame) -> dict:
+    """Image sizes seen per radar in the history. More than one size = the TMD layout may have changed."""
+    new = hist[(hist["status"] == "new") & (hist["width"] > 0)]
+    out = {}
+    for code, g in new.groupby("code"):
+        sz = (g["width"].astype(int).astype(str) + "x" + g["height"].astype(int).astype(str))
+        first = g.assign(sz=sz).groupby("sz")["fetch_utc"].min().sort_values()
+        out[code] = [{"size": k, "first_utc": v.strftime("%Y-%m-%dT%H:%M:%SZ")} for k, v in first.items()]
+    return out
 
 
 def summary(hist: pd.DataFrame, now: datetime | None = None, stale_min: float = 45) -> dict:
@@ -101,7 +146,14 @@ def summary(hist: pd.DataFrame, now: datetime | None = None, stale_min: float = 
             "size": None if last is None else f"{int(last['width'])}x{int(last['height'])}",
             "path": None if last is None else str(last["path"]),
         })
-    return {"generated_utc": now.strftime("%Y-%m-%dT%H:%M:%SZ"), "stale_min": stale_min, "radars": out}
+    new7 = hist[hist["status"] == "new"]
+    totals = {"bytes_24h": int(day.loc[day["status"] == "new", "bytes"].fillna(0).sum()),
+              "bytes_7d": int(new7["bytes"].fillna(0).sum()),
+              "images_7d": int(len(new7)),
+              "requests_24h": int(len(day)),
+              "errors_24h": int((day["status"] == "error").sum())}
+    return {"generated_utc": now.strftime("%Y-%m-%dT%H:%M:%SZ"), "stale_min": stale_min, "radars": out,
+            "totals": totals}
 
 
 def build_site(root: Path, site: Path, hist: pd.DataFrame, now: datetime | None = None) -> Path:
@@ -112,12 +164,25 @@ def build_site(root: Path, site: Path, hist: pd.DataFrame, now: datetime | None 
     s["control"] = control.status_payload(control.load())
     cfg = load_yaml("collect.yaml")
     s["archive"] = {"label": cfg.get("archive_label", ""), "url": cfg.get("archive_url", "")}
+    s["daily"] = daily_counts(hist, now=now)
+    s["sizes"] = size_changes(hist)
+    frames = {}
+    for out in sorted((root / "state" / "frames").glob("*")):
+        fs = sorted(out.glob("*.jpg"))
+        if fs:
+            (d / "frames" / out.name).mkdir(parents=True, exist_ok=True)
+            for f in fs:
+                shutil.copy2(f, d / "frames" / out.name / f.name)
+            frames[out.name] = [f.name for f in fs]
+    s["frames"] = frames
     (d / "latest.json").write_text(json.dumps(s, ensure_ascii=False, indent=1), encoding="utf-8")
     now = pd.Timestamp(now or datetime.now(timezone.utc))
     h48 = hist[hist["fetch_utc"] >= now - pd.Timedelta(hours=48)].copy()
     h48["fetch_utc"] = h48["fetch_utc"].dt.strftime("%Y-%m-%dT%H:%M:%SZ")
     h48.drop(columns=["path"]).to_csv(d / "history_48h.csv", index=False)
     for f in (root / "state" / "thumbs").glob("*"):
+        if f.is_dir():
+            continue
         shutil.copy2(f, d / "thumbs" / f.name)
     return d
 

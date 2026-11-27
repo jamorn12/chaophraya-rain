@@ -110,6 +110,9 @@ class Collector:
         res.error = ""
         res.sha256 = hashlib.sha256(data).hexdigest()
         res.bytes = len(data)
+        latest = self.root / "latest" / f"{radar.code}.jpg"     # newest bytes, new or duplicate (not archived)
+        latest.parent.mkdir(parents=True, exist_ok=True)
+        latest.write_bytes(data)
         if state.get(radar.code) == res.sha256:
             res.status = "duplicate"
             return res

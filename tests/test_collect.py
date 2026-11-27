@@ -136,12 +136,16 @@ def test_status_bundle(tmp_path):
     h = status.update_history(tmp_path)
     assert len(h) == 2 and (tmp_path / "state" / "history.csv").exists()
     assert status.refresh_thumbs(tmp_path, h) == ["PHS"]
+    from PIL import Image as _I
+    assert _I.open(tmp_path / "state" / "thumbs" / "PHS.jpg").size == status.BOX
+    assert len(list((tmp_path / "state" / "frames" / "PHS").glob("*.jpg"))) == 1
     d = status.build_site(tmp_path, tmp_path / "site", h)
     s = json.loads((d / "latest.json").read_text(encoding="utf-8"))
     by = {r["code"]: r for r in s["radars"]}
     assert len(by) == 9 and by["PHS"]["fresh"] and by["PHS"]["new_24h"] == 1
     assert by["CRI"]["err_24h"] == 1 and not by["CRI"]["fresh"]
     assert (d / "thumbs" / "PHS.jpg").exists() and (d / "history_48h.csv").exists()
+    assert list(s["frames"]) == ["PHS"] and s["totals"]["images_7d"] == 1 and s["sizes"]["PHS"][0]["size"] == "400x300"
     # a second job with no new image keeps history and the old thumb
     h2 = status.update_history(tmp_path)
     assert len(h2) == 2

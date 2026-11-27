@@ -101,6 +101,8 @@ jobs:
           for d in raw inventory state; do
             [ -d "data/$d" ] && rclone copy "data/$d" "$ARCHIVE_REMOTE/$d" --transfers 8 --retries 3 -q
           done
+          # film-strip frames: keep only the newest ones on the remote too
+          [ -d data/state/frames ] && rclone sync data/state/frames "$ARCHIVE_REMOTE/state/frames" -q || true
 
       - name: Keep as artifact (no remote set)
         if: steps.sw.outputs.run == 'true' && steps.cfg.outputs.remote != 'true'

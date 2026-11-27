@@ -1,0 +1,49 @@
+name: scheduler
+
+# Keeps the 15-minute rhythm without an outside service.
+# GitHub's own cron for this repo was not firing (or fires late), so this job stays alive for
+# about 5.5 h, dispatches s1-collect at minute 06, 21, 36 and 51 (TMD posts each scan ~5-8 min
+# after :00/:15/:30/:45), then starts a fresh copy of itself. A workflow_dispatch made with the
+# GITHUB_TOKEN is allowed to start a new run (GitHub exception for workflow_dispatch).
+# Start it once by hand: Actions > scheduler > Run workflow. The cron below restarts it if it ever stops.
+# Runner minutes are free for public repositories.
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "7 */3 * * *"
+
+concurrency:
+  group: scheduler
+  cancel-in-progress: false
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  tick:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    env:
+      GH_TOKEN: ${{ github.token }}
+      REPO: ${{ github.repository }}
+    steps:
+      - name: Dispatch s1-collect every 15 min (about 5.5 h)
+        run: |
+          OFFSET=360                                  # seconds after each quarter hour
+          end=$(( $(date +%s) + 330 * 60 ))
+          while :; do
+            now=$(date +%s)
+            next=$(( ((now - OFFSET) / 900 + 1) * 900 + OFFSET ))
+            [ "$next" -ge "$end" ] && break
+            sleep $(( next - now ))
+            if gh workflow run collect.yml -R "$REPO" --ref main -f repeat=2; then
+              echo "$(date -u +%H:%M:%SZ) dispatched s1-collect"
+            else
+              echo "::warning::dispatch failed at $(date -u +%H:%M:%SZ)"
+            fi
+          done
+      - name: Hand over to a fresh scheduler run
+        if: always()
+        run: gh workflow run scheduler.yml -R "$REPO" --ref main
