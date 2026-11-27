@@ -1,0 +1,48 @@
+name: control
+
+# System on/off switch. Run it from Actions > control > Run workflow, or from the admin page.
+#   off: collection (and later decode, mosaic, nowcast) stop; the public page loops the last forecast.
+#   on : everything runs again from the next 15-min slot.
+# It commits config/control.yaml and web/public/data/status.json, so the git log is the switch history.
+
+on:
+  workflow_dispatch:
+    inputs:
+      state:
+        description: "turn the system on or off"
+        type: choice
+        options: ["off", "on"]
+        required: true
+      reason:
+        description: "why (shown on the admin page), e.g. dry season / trial"
+        type: string
+        default: ""
+
+concurrency:
+  group: control
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  switch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.11", cache: pip}
+      - run: pip install -e .
+      - name: Set switch
+        env:
+          REASON: ${{ inputs.reason }}
+        run: python -m cpmosaic.control "${{ inputs.state }}" --reason "$REASON" --by "$GITHUB_ACTOR"
+      - name: Commit
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add config/control.yaml web/public/data/status.json
+          git diff --cached --quiet && { echo "no change"; exit 0; }
+          git commit -m "control: system ${{ inputs.state }} by ${GITHUB_ACTOR}"
+          for i in 1 2 3; do git pull --rebase -q && git push -q && exit 0; sleep 5; done
+          exit 1

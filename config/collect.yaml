@@ -1,0 +1,9 @@
+# Stage 1 - collector settings
+user_agent: "chaophraya-rain/0.1 (research, Naresuan University; contact via GitHub issues)"
+timeout_s: 40          # per request
+retries: 3             # per radar per round
+backoff_s: 10          # wait between retries (x attempt number)
+min_bytes: 50000       # smaller files are treated as broken
+repeat: 4              # rounds per job (GitHub cron can start late, so each job checks several times)
+interval_s: 180        # seconds between rounds
+data_root: data        # local working folder; raw images are copied to the archive remote by the workflow

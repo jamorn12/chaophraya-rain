@@ -1,0 +1,14 @@
+# data never goes into git (raw images ~1.2 GB/day live in the archive remote)
+/data/
+*.nc
+*.npz
+# python
+__pycache__/
+*.egg-info/
+.pytest_cache/
+.ipynb_checkpoints/
+.venv/
+# secrets
+*.conf
+GITHUB_TOKEN*
+.env

@@ -1,0 +1,6 @@
+# System switch. Change it with the 'control' workflow (Actions > control > Run workflow)
+# or the admin page; do not edit by hand while workflows are running.
+enabled: true
+changed_utc: '2026-11-27T02:20:00Z'
+changed_by: jamorn12
+reason: trial collection of the nine radars

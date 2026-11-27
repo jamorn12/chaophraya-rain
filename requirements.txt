@@ -1,0 +1,5 @@
+# stage 1 (collector) - later stages add their own lines when they are built
+requests>=2.31
+Pillow>=10.2
+PyYAML>=6.0
+pandas>=2.0

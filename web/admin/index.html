@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Chao Phraya Rain · Admin</title>
+<style>
+  :root {
+    --bg: #f4f6f8; --card: #ffffff; --ink: #14202b; --muted: #5b6b7a; --line: #d9e0e6;
+    --on: #0f7b5f; --on-bg: #e3f4ee; --off: #9a5b00; --off-bg: #fbefdc; --bad: #b3261e; --accent: #1f4e79;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #0f1419; --card: #18212a; --ink: #e6edf3; --muted: #93a4b4; --line: #2a3642;
+            --on: #4cc59f; --on-bg: #143229; --off: #f0b35a; --off-bg: #3a2a12; --bad: #ff8a80; --accent: #8cb8e6; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+         font: 15px/1.6 "Leelawadee UI", Tahoma, "Noto Sans Thai", system-ui, sans-serif; }
+  main { max-width: 860px; margin: 0 auto; padding: 24px 16px 48px; }
+  h1 { font-size: 20px; margin: 0 0 2px; }
+  .sub { color: var(--muted); margin: 0 0 20px; font-size: 13px; }
+  section { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 18px; margin-bottom: 16px; }
+  h2 { font-size: 15px; margin: 0 0 12px; }
+  .state { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+  .pill { font-weight: 700; padding: 6px 14px; border-radius: 999px; font-size: 16px; }
+  .pill.on { color: var(--on); background: var(--on-bg); }
+  .pill.off { color: var(--off); background: var(--off-bg); }
+  .meta { color: var(--muted); font-size: 13px; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
+  input[type=text], input[type=password] { flex: 1 1 260px; padding: 8px 10px; border-radius: 6px;
+         border: 1px solid var(--line); background: var(--bg); color: var(--ink); font: inherit; }
+  button { padding: 8px 16px; border-radius: 6px; border: 1px solid var(--accent); background: var(--accent);
+           color: #fff; font: inherit; font-weight: 600; cursor: pointer; }
+  button.ghost { background: transparent; color: var(--accent); }
+  button:disabled { opacity: .5; cursor: default; }
+  .msg { margin-top: 10px; font-size: 13px; min-height: 1.4em; }
+  .msg.err { color: var(--bad); }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  th { color: var(--muted); font-weight: 600; }
+  td a { color: var(--accent); }
+  .ok { color: var(--on); } .fail { color: var(--bad); } .run { color: var(--off); }
+  .scroll { overflow-x: auto; }
+  details { margin-top: 8px; font-size: 13px; color: var(--muted); }
+  code { font-size: 12px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Chao Phraya Rain · Admin</h1>
+  <p class="sub" id="repoLine">repo</p>
+
+  <section>
+    <h2>สวิตช์ระบบ · System switch</h2>
+    <div class="state">
+      <span class="pill" id="pill">กำลังอ่าน…</span>
+      <span class="meta" id="since"></span>
+    </div>
+    <p class="meta" id="effect"></p>
+    <div class="row">
+      <input type="text" id="reason" placeholder="เหตุผล เช่น นอกฤดูฝน / ทดลองเก็บภาพ">
+      <button id="toggle" disabled>…</button>
+    </div>
+    <div class="msg" id="msg"></div>
+  </section>
+
+  <section>
+    <h2>การเก็บภาพล่าสุด · s1-collect runs</h2>
+    <div class="scroll"><table id="collect"><tr><td class="meta">กำลังอ่าน…</td></tr></table></div>
+    <p class="meta">รอบที่ระบบปิดจะจบสำเร็จภายในไม่กี่วินาทีโดยไม่เก็บภาพ (step "System switch" แจ้งว่า OFF)</p>
+  </section>
+
+  <section>
+    <h2>ประวัติการเปิดปิด · control runs</h2>
+    <div class="scroll"><table id="control"><tr><td class="meta">กำลังอ่าน…</td></tr></table></div>
+  </section>
+
+  <section>
+    <h2>Token สำหรับปุ่ม</h2>
+    <p class="meta">ปุ่มเปิดปิดต้องใช้ fine-grained token ของ GitHub: Repository access เฉพาะ repo นี้,
+      Permissions → Actions: Read and write. token เก็บใน browser เครื่องนี้เท่านั้น ไม่ถูกส่งไปที่อื่นนอกจาก api.github.com
+      ถ้าไม่ใส่ token ปุ่มจะเปิดหน้า Actions ให้กด Run workflow เอง</p>
+    <div class="row">
+      <input type="password" id="token" placeholder="github_pat_…" autocomplete="off">
+      <button class="ghost" id="saveTok">บันทึก</button>
+      <button class="ghost" id="clearTok">ลบ</button>
+    </div>
+    <div class="msg" id="tokMsg"></div>
+  </section>
+</main>
+
+<script>
+const params = new URLSearchParams(location.search);
+const REPO = params.get("repo") || "jamorn12/chaophraya-rain";
+const BRANCH = params.get("branch") || "main";
+const API = `https://api.github.com/repos/${REPO}`;
+const TOK_KEY = "cpm_admin_token";
+const $ = id => document.getElementById(id);
+
+function getTok() { try { return localStorage.getItem(TOK_KEY) || ""; } catch { return ""; } }
+function setTok(v) { try { v ? localStorage.setItem(TOK_KEY, v) : localStorage.removeItem(TOK_KEY); } catch {} }
+function headers(auth) {
+  const h = { "Accept": "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28" };
+  const t = getTok(); if (auth !== false && t) h.Authorization = `Bearer ${t}`;
+  return h;
+}
+function thai(iso) {
+  if (!iso) return "-";
+  return new Date(iso).toLocaleString("th-TH", { timeZone: "Asia/Bangkok", day: "numeric", month: "short",
+    hour: "2-digit", minute: "2-digit" }) + " น.";
+}
+function b64utf8(s) { return new TextDecoder().decode(Uint8Array.from(atob(s.replace(/\n/g, "")), c => c.charCodeAt(0))); }
+
+let current = null;
+
+async function loadStatus() {
+  try {
+    const r = await fetch(`${API}/contents/web/public/data/status.json?ref=${BRANCH}&t=${Date.now()}`, { headers: headers() });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const st = JSON.parse(b64utf8((await r.json()).content));
+    current = st.enabled;
+    const pill = $("pill");
+    pill.textContent = st.enabled ? "เปิดอยู่ · ON" : "ปิดอยู่ · OFF";
+    pill.className = "pill " + (st.enabled ? "on" : "off");
+    $("since").textContent = `ตั้งเมื่อ ${thai(st.changed_utc)} โดย ${st.changed_by || "-"} · ${st.reason || "ไม่ระบุเหตุผล"}`;
+    $("effect").textContent = st.enabled
+      ? "เก็บภาพ 9 สถานีทุก 15 นาที หน้าสาธารณะแสดงข้อมูลสด"
+      : "หยุดเก็บภาพ หน้าสาธารณะวนแสดงพยากรณ์ชุดล่าสุดก่อนปิด";
+    const b = $("toggle");
+    b.disabled = false;
+    b.textContent = st.enabled ? "ปิดระบบ" : "เปิดระบบ";
+  } catch (e) {
+    $("pill").textContent = "อ่านสถานะไม่ได้"; $("pill").className = "pill off";
+    $("msg").className = "msg err"; $("msg").textContent = `อ่าน status.json ไม่ได้ (${e.message}) ตรวจชื่อ repo หรือ push ไฟล์ก่อน`;
+  }
+}
+
+function runRow(r) {
+  const c = r.status !== "completed" ? ["run", r.status] : r.conclusion === "success" ? ["ok", "success"] : ["fail", r.conclusion];
+  const dur = r.run_started_at && r.updated_at ? Math.round((new Date(r.updated_at) - new Date(r.run_started_at)) / 1000) : null;
+  return `<tr><td>${thai(r.created_at)}</td><td class="${c[0]}">${c[1]}</td><td>${r.event}</td>
+    <td>${dur != null ? Math.floor(dur / 60) + " นาที " + (dur % 60) + " วิ" : "-"}</td>
+    <td>${r.display_title ? r.display_title.replace(/</g, "&lt;") : ""}</td>
+    <td><a href="${r.html_url}" target="_blank" rel="noopener">เปิด</a></td></tr>`;
+}
+
+async function loadRuns(file, table, n) {
+  try {
+    const r = await fetch(`${API}/actions/workflows/${file}/runs?per_page=${n}&t=${Date.now()}`, { headers: headers() });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const runs = (await r.json()).workflow_runs;
+    $(table).innerHTML = runs.length
+      ? "<tr><th>เวลา</th><th>ผล</th><th>สั่งโดย</th><th>ใช้เวลา</th><th>ชื่อ</th><th></th></tr>" + runs.map(runRow).join("")
+      : '<tr><td class="meta">ยังไม่มีรอบ</td></tr>';
+  } catch (e) {
+    $(table).innerHTML = `<tr><td class="meta">อ่านไม่ได้ (${e.message})</td></tr>`;
+  }
+}
+
+async function toggle() {
+  const want = current ? "off" : "on";
+  const reason = $("reason").value.trim();
+  const msg = $("msg");
+  if (!getTok()) {
+    window.open(`https://github.com/${REPO}/actions/workflows/control.yml`, "_blank", "noopener");
+    msg.className = "msg"; msg.textContent = `ยังไม่มี token: เปิดหน้า Actions ให้แล้ว กด Run workflow แล้วเลือก "${want}"`;
+    return;
+  }
+  if (!confirm(want === "off" ? "ปิดระบบ: หยุดเก็บภาพทุกสถานี ใช่ไหม" : "เปิดระบบ: เริ่มเก็บภาพทุก 15 นาที ใช่ไหม")) return;
+  $("toggle").disabled = true;
+  msg.className = "msg"; msg.textContent = "กำลังส่งคำสั่ง…";
+  try {
+    const r = await fetch(`${API}/actions/workflows/control.yml/dispatches`, {
+      method: "POST", headers: { ...headers(), "Content-Type": "application/json" },
+      body: JSON.stringify({ ref: BRANCH, inputs: { state: want, reason } })
+    });
+    if (r.status !== 204) throw new Error(`HTTP ${r.status} ${(await r.text()).slice(0, 160)}`);
+    msg.textContent = "ส่งคำสั่งแล้ว workflow control ใช้เวลาราว 1 นาที หน้านี้จะอ่านสถานะใหม่ให้เอง";
+    let k = 0;
+    const timer = setInterval(async () => {
+      k++; await loadRuns("control.yml", "control", 5); await loadStatus();
+      if ((want === "on") === current) { clearInterval(timer); msg.textContent = `เปลี่ยนเป็น ${want.toUpperCase()} แล้ว`; }
+      if (k >= 12) { clearInterval(timer); $("toggle").disabled = false; msg.textContent = "ยังไม่เห็นการเปลี่ยน ลองกดรีเฟรชอีกครั้ง หรือดูรอบ control ด้านล่าง"; }
+    }, 15000);
+  } catch (e) {
+    $("toggle").disabled = false;
+    msg.className = "msg err";
+    msg.textContent = `สั่งไม่สำเร็จ: ${e.message}. ตรวจว่า token มีสิทธิ์ Actions: Read and write ของ repo นี้`;
+  }
+}
+
+$("repoLine").innerHTML = `repo <a href="https://github.com/${REPO}" target="_blank" rel="noopener">${REPO}</a> · branch ${BRANCH} · เวลาแสดงเป็นเวลาไทย`;
+$("toggle").onclick = toggle;
+$("saveTok").onclick = () => { const v = $("token").value.trim(); setTok(v); $("token").value = "";
+  $("tokMsg").textContent = v ? "บันทึก token ในเครื่องนี้แล้ว" : "ไม่ได้ใส่ token"; };
+$("clearTok").onclick = () => { setTok(""); $("tokMsg").textContent = "ลบ token ออกจากเครื่องนี้แล้ว"; };
+$("tokMsg").textContent = getTok() ? "มี token ในเครื่องนี้แล้ว" : "ยังไม่มี token";
+
+loadStatus();
+loadRuns("collect.yml", "collect", 8);
+loadRuns("control.yml", "control", 5);
+setInterval(() => loadRuns("collect.yml", "collect", 8), 60000);
+</script>
+</body>
+</html>

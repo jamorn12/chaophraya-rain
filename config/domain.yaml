@@ -1,0 +1,7 @@
+# Analysis domain (phase 0 of the conceptual framework)
+basin: "Chao Phraya + Tha Chin (HydroBASINS v1c, level-8 units sharing the main-river MAIN_BAS)"
+buffer_km: 50
+projection: {name: aeqd, lat0: 16.0, lon0: 100.3}   # same centre as the coverage analysis
+grid_km: 1.0
+timestep_min: 15
+gis_base: "D:/Wihok/appNowcast/gis_base"            # local path; override with env GIS_BASE

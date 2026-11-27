@@ -1,0 +1,23 @@
+# Stage 8 - best-product selection, rule v1 (design of 25 Nov 2026)
+candidates: [extrapolation, sprog, steps, linda]   # persistence = baseline only, never selected
+initial: extrapolation
+fallback_last: extrapolation
+verify:
+  thresholds_dbz: [20, 35]
+  fss: {threshold_dbz: 30, scale_km: 10}
+  mask: {inside_basin: true, min_qi: 0.5}
+rank:
+  run_at_utc: "00:00"
+  window_days: 14
+  wet_cycles_only: true
+  min_wet_cycles: 200          # below this keep the current choice
+  scores: [csi20, csi35, fss30_10km, rmse]
+  lead_weights: {15: 2, 30: 2, 45: 2, 60: 2, 75: 1, 90: 1, 105: 1, 120: 1}
+  one_model_all_leads: true
+  tie_break: simpler           # extrapolation < sprog < linda < steps
+switch:
+  consecutive_wins: 3
+  bootstrap_p_better: 0.8      # day-block bootstrap
+log:
+  current: selection/current.json
+  history: selection/history.csv

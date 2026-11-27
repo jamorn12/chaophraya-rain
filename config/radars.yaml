@@ -1,0 +1,23 @@
+# The nine TMD radars around the Chao Phraya - Tha Chin basin.
+# Source of coordinates: mosaic_chaophraya/radars.csv (checked 25 Nov 2026).
+# Image facts: TMD "High Quality" images, checked in a browser on 25 and 27 Nov 2026
+# (all nine returned HTTP 200; the server sends no Last-Modified header, so the scan
+# time must be read from the image footer in stage 2).
+#
+# layout  A = 1920x1600, PPI filtered ~0.5 deg (EEC-style footer)
+#         B = 800x800, PPI 1.59 deg, unfiltered
+#         C = 1920x1600, "Moment: Intensity (H)"
+#         D = 2503x1920, CMAX (Gematronik/Leonardo layout)
+
+url_template: "https://weather.tmd.go.th/{code_lower}/{code_lower}240_HQ_latest.jpg"
+
+radars:
+  - {code: CRI, name: "Chiang Rai",                 lat: 19.9615, lon:  99.8816, pos_err_km: 0.1, layout: A, product: "PPI Filtered Intensity(H) 0.50 deg"}
+  - {code: LMP, name: "Lamphun",                    lat: 18.5653, lon:  99.0419, pos_err_km: 3.0, layout: B, product: "PPI Intensity(H) 1.59 deg"}
+  - {code: TAK, name: "Doi Muser, Tak",             lat: 16.7524, lon:  98.9356, pos_err_km: 3.0, layout: C, product: "Moment: Intensity (H), tilt not printed"}
+  - {code: PHS, name: "Phitsanulok",                lat: 16.7765, lon: 100.2161, pos_err_km: 0.2, layout: A, product: "PPI Filtered Intensity(H) 0.50 deg"}
+  - {code: PHB, name: "Phetchabun (Wichian Buri)",  lat: 15.6569, lon: 101.1083, pos_err_km: 0.3, layout: D, product: "CMAX (dBZ)"}
+  - {code: CHN, name: "Chai Nat",                   lat: 15.1604, lon: 100.1869, pos_err_km: 1.0, layout: A, product: "PPI Filtered Intensity(H) 0.51 deg"}
+  - {code: KKW, name: "Nakhon Nayok",               lat: 14.3675, lon: 101.4058, pos_err_km: 1.0, layout: C, product: "Moment: Intensity (H) 0.80 deg"}
+  - {code: SVP, name: "Suvarnabhumi",               lat: 13.6861, lon: 100.7750, pos_err_km: 1.0, layout: C, product: "Moment: Intensity (H) 1.49 deg"}
+  - {code: SKM, name: "Samut Songkhram",            lat: 13.4105, lon: 100.0292, pos_err_km: 1.0, layout: A, product: "PPI Filtered Intensity(H) 0.50 deg"}
