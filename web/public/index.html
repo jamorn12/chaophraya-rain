@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ฝนลุ่มเจ้าพระยา · Chao Phraya Rain</title>
+<style>
+  :root { --bg:#f4f6f8; --card:#fff; --ink:#14202b; --muted:#5b6b7a; --line:#d9e0e6; --on:#0f7b5f; --off:#9a5b00; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#0f1419; --card:#18212a; --ink:#e6edf3; --muted:#93a4b4; --line:#2a3642; --on:#4cc59f; --off:#f0b35a; } }
+  * { box-sizing:border-box } body { margin:0; background:var(--bg); color:var(--ink);
+    font:16px/1.7 "Leelawadee UI",Tahoma,"Noto Sans Thai",system-ui,sans-serif }
+  main { max-width:720px; margin:0 auto; padding:40px 16px }
+  h1 { font-size:26px; margin:0 } .en { color:var(--muted); margin:0 0 24px }
+  section { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:18px; margin-bottom:16px }
+  .st { font-weight:700 } .st.on { color:var(--on) } .st.off { color:var(--off) }
+  .muted { color:var(--muted); font-size:14px }
+</style>
+</head>
+<body>
+<main>
+  <h1>ฝนลุ่มเจ้าพระยา</h1>
+  <p class="en">Chao Phraya Rain · radar mosaic and 2-hour rain nowcast for the Chao Phraya–Tha Chin basin</p>
+  <section>
+    <p>ระบบกำลังพัฒนา ตอนนี้อยู่ในช่วงทดลองเก็บภาพเรดาร์ 9 สถานีของกรมอุตุนิยมวิทยา แผนที่ฝนและพยากรณ์จะแสดงที่หน้านี้เมื่อพร้อม</p>
+    <p class="muted">Under development: trial collection of the nine TMD radars. The rain map and forecast will appear here.</p>
+    <p>สถานะระบบ · System: <span class="st" id="st">…</span></p>
+    <p class="muted" id="msg"></p>
+  </section>
+  <p class="muted">ข้อมูลเรดาร์: กรมอุตุนิยมวิทยา · Radar data: Thai Meteorological Department</p>
+</main>
+<script>
+fetch("data/status.json?t=" + Date.now()).then(r => r.json()).then(s => {
+  const el = document.getElementById("st");
+  el.textContent = s.enabled ? "เปิด · live" : "พัก · paused";
+  el.className = "st " + (s.enabled ? "on" : "off");
+  if (!s.enabled) document.getElementById("msg").textContent = s.message_th + " · " + s.message_en;
+}).catch(() => { document.getElementById("st").textContent = "-"; });
+</script>
+</body>
+</html>

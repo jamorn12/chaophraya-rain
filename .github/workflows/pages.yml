@@ -1,0 +1,38 @@
+name: pages
+
+# Publish web/ to GitHub Pages:  https://jamorn12.github.io/chaophraya-rain/
+#   /            -> web/index.html        (landing, links to the public page)
+#   /public/     -> web/public/           (public site; data/status.json = system switch)
+#   /admin/      -> web/admin/            (expert/admin page, not linked from the public page)
+# Deployed from a custom workflow, so the 10-builds-per-hour Pages limit does not apply,
+# and nothing is committed to the repo (no history growth).
+
+on:
+  push:
+    branches: [main]
+    paths: ["web/**", ".github/workflows/pages.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: web
+      - id: deployment
+        uses: actions/deploy-pages@v4
